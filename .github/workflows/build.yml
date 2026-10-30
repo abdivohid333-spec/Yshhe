@@ -1,0 +1,46 @@
+name: APKGuard Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract APKGuard ZIP
+        run: |
+          mkdir extracted
+          unzip -q APKGuard.zip -d extracted
+          test -f extracted/apkguard/settings.gradle.kts
+
+      - name: Accept Android licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
+      - name: Install Android SDK
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build APK
+        working-directory: extracted/apkguard
+        run: |
+          gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: APKGuard-debug
+          path: extracted/apkguard/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
